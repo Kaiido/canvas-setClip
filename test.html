@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="setClip.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1>Tests suite</h1>
+    </header>
+    <script>
+    
+function buildTest( script_content ) {
+  const container = document.createElement( "section" );
+  const with_script = document.createElement( "iframe" );
+  const without_script = document.createElement( "iframe" );
+  const pre = document.createElement( "pre" );
+
+  const common_markup = `
+    <body>
+      <script>
+        const canvas = document.createElement( "canvas" );
+        document.body.append( canvas );
+        const ctx = canvas.getContext( "2d" );
+        (${ script_content.toString() })();
+      <\/script>
+    </body>
+  `;
+
+  container.append( with_script, without_script, pre );
+
+  with_script.srcdoc = '<script src="setClip.js"><\/script>' + common_markup;
+  without_script.srcdoc = common_markup;
+  pre.textContent = script_content.toString();
+
+  document.body.append( container );
+  
+}
+
+buildTest( () => {  // should be same in both iframes
+
+/*
+  Tests that clipping still works as expected
+*/
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+
+ctx.rect( 50, 0, 100, 100 );
+ctx.clip();
+
+ctx.fillStyle = "green";
+ctx.fill( full );
+
+ctx.fillStyle = "red";
+ctx.globalAlpha = 0.2;
+ctx.fill( full );
+
+ctx.clip( star, "evenodd" );
+ctx.globalAlpha = 1;
+ctx.fillStyle = "blue";
+ctx.fill( full );
+
+} );    
+
+buildTest( (() => {  // should be same in both iframes
+
+/*
+  Tests that save and restore works as expected
+*/
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+
+ctx.rect( 50, 0, 100, 100 );
+ctx.clip();
+ctx.save();
+
+ctx.clip( star, "evenodd" );
+
+ctx.fillStyle = "green";
+ctx.fill( full );
+
+ctx.restore();
+
+ctx.fillStyle = "red";
+ctx.globalAlpha = 0.2;
+
+ctx.fill( full );
+
+}) );    
+
+
+buildTest( (() => { // should be same in both iframes
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+
+ctx.rect( 50, 0, 100, 100 );
+ctx.clip();
+ctx.save();
+ctx.clip( star, "evenodd" );
+
+ctx.fillStyle = "green";
+ctx.restore();
+ctx.fill( full );
+
+ctx.fillStyle = "red";
+ctx.globalAlpha = 0.2;
+ctx.fill( full );
+
+ctx.clip( star, "nonzero" );
+ctx.fill( full );
+
+}) );    
+
+buildTest( () => {  // should be same in both iframes
+
+/*
+  tests transforms are still applied on both path definition and filling.
+*/
+
+const grad = ctx.createRadialGradient( 50, 50, 0, 10, 100, 150 );
+grad.addColorStop( 0, "red" );
+grad.addColorStop( 1, "green" );
+ctx.setLineDash( [ 0, 2, 0 ] );
+ctx.strokeStyle = grad;
+ctx.globalAlpha = 0.7;
+ctx.lineWidth = 2;
+ctx.beginPath();
+// ctx.setTransform( 1, 0, 0, 1, 50, 50 );
+//ctx.moveTo( 20, 20 );
+ctx.setTransform( 0.75, 0, 0, 0.5, 100, 50 );
+// ctx.rotate( Math.PI / 4 );
+// ctx.lineTo( 0, 100 );
+// ctx.lineTo( 0, 0 );
+ctx.rect( 150, 10, 50, 50 );
+
+ctx.arc( 90, 75, 45, 0, Math.PI * 2 );
+ctx.ellipse( -50, 20, 45, 90, Math.PI/33, -Math.PI/2, -Math.PI*0.25, true );
+
+ctx.lineTo( 20, 100 );
+ctx.rect( 20, 100, 20, 20 );
+
+ctx.setTransform( 2, 0, 0, 2, 50, 50 );
+//ctx.strokeStyle = "green";
+ctx.stroke();
+
+});
+
+buildTest( (() => {  // should be same in both iframes
+
+/*
+  tests more primitives and if transforms are still applied on both path definition and filling.
+  Also tests isPointInPath and isPointInStroke
+  // revealed https://bugs.chromium.org/p/chromium/issues/detail?id=1134474
+*/
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+const grad = ctx.createRadialGradient( 50, 50, 0, 10, 100, 150 );
+grad.addColorStop( 0, "red" );
+grad.addColorStop( 1, "green" );
+ctx.setLineDash( [ 0, 2, 0 ] );
+ctx.strokeStyle = grad;
+ctx.globalAlpha = 0.7;
+
+ctx.setTransform( 0.5, 0, 0, 1, 20, 0 );
+
+ctx.beginPath();
+ctx.lineWidth = 5;
+ctx.setTransform( 1.15, 0, 0, 1, 0, 0 );
+ctx.moveTo(200, 20);
+ctx.rect( 220, 80, 15, 50 );
+ctx.translate( canvas.width/2, canvas.height/2 )
+ctx.rotate( Math.PI );
+ctx.translate( -canvas.width/2, -canvas.height/2 )
+ctx.arcTo(0,0, 50,20, 40);
+ctx.scale( 0.5, 0.5 );
+ctx.stroke();
+
+let start = { x: 50,    y: 20  };
+let cp1 =   { x: 230,   y: 30  };
+let cp2 =   { x: 150,   y: 80  };
+let end =   { x: 250,   y: 100 };
+ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+
+ctx.moveTo(start.x, start.y);
+ctx.bezierCurveTo(cp1.x, cp1.y, cp2.x, cp2.y, end.x, end.y);
+ctx.translate( canvas.width/2, canvas.height/2 )
+ctx.rotate( Math.PI )
+ctx.translate( -canvas.width/2, -canvas.height/2 )
+
+ctx.quadraticCurveTo(230, 30, 50, 100);
+
+ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+ctx.stroke();
+ctx.fillStyle = "rgba(255,0,0,0.8)";
+ctx.fill( star, "evenodd" );
+ctx.setLineDash( [] );
+
+onmousemove = (evt) => {
+
+  const bbox = canvas.getBoundingClientRect();
+  const x = evt.clientX - bbox.left;
+  const y = evt.clientY - bbox.top;
+  
+  if( ctx.isPointInPath( star, x, y, "evenodd" ) ) {
+    canvas.style.cursor = "pointer";
+  }
+  else if( ctx.isPointInStroke( x, y ) ) {
+    canvas.style.cursor = "ns-resize";
+  }
+  else {
+    canvas.style.cursor = "default";
+  }
+  
+}
+
+}) );
+
+buildTest( (() => {  // should be same in both iframes
+
+/*
+  tests that clipping is still subject to current transforms
+*/
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+ctx.setTransform( 1, 0, 0, 1, 50, 50 );
+ctx.rect( 0, 0, 50, 50 );
+ctx.clip();
+ctx.setTransform( 1, 0, 0, 1, 0, 0 );
+ctx.fill( full );
+
+}) );
+
+buildTest( (() => { // left should have a blue circle that right hasn't
+
+/*
+  tests that setClip works correctly
+*/
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+
+ctx.rect( 50, 0, 100, 100 );
+ctx.clip();
+ctx.clip( star, "evenodd" );
+
+ctx.fillStyle = "green";
+ctx.fill( full );
+
+
+ctx.fillStyle = "red";
+ctx.globalAlpha = 0.2;
+ctx.fill( full );
+
+ctx.clip( star, "nonzero" );
+ctx.fill( full );
+
+if( ctx.setClip ) {
+  ctx.beginPath();
+  ctx.arc( 150, 75, 60, 0, Math.PI * 2 );
+
+  ctx.setClip();
+
+  ctx.fillStyle = "blue";
+  ctx.fill( full );
+}
+
+}) );
+
+
+buildTest( (() => { // left should have a blue circle that right hasn't
+
+/*
+  tests calling restore after setClip
+*/
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+const circle = new Path2D();
+circle.arc( 150, 75, 60, 0, Math.PI * 2 );
+
+ctx.rect( 50, 0, 100, 100 );
+ctx.clip();
+ctx.clip( star, "evenodd" );
+
+ctx.fillStyle = "red";
+ctx.save();
+
+if( ctx.setClip ) {
+  ctx.beginPath();
+  ctx.setClip( circle );
+  ctx.fillStyle = "blue";
+  ctx.fill( full );
+}
+
+ctx.restore();
+
+ctx.fill( full );
+ctx.stroke( star );
+
+}) );
+
+buildTest( (() => { // left should have a blue circle that right hasn't
+
+/*
+  tests calling resetClip
+*/
+
+const full = new Path2D( "M0,0L300,0L300,150L0,150Z" );
+const star = new Path2D( "M50,0L21,90L98,35L2,35L79,90Z" );
+const circle = new Path2D();
+circle.arc( 150, 75, 60, 0, Math.PI * 2 );
+
+ctx.rect( 50, 0, 100, 100 );
+ctx.clip();
+ctx.clip( star, "evenodd" );
+
+ctx.fillStyle = "red";
+ctx.fill( full );
+
+if( ctx.resetClip ) {
+  ctx.resetClip();
+}
+
+ctx.fillStyle = "blue";
+ctx.fill( circle );
+ctx.stroke( star );
+
+}) );
+
+
+
+function cloneCanvas( canvas ) {
+  const clone = canvas.cloneNode();
+  clone.getContext('2d').drawImage( canvas, 0, 0 );
+  return clone;
+}
+    </script>    
+  </body>
+</html>
