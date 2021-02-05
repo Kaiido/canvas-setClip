@@ -1,37 +1,35 @@
-## Welcome to GitHub Pages
+# setClip.js
 
-You can use the [editor on GitHub](https://github.com/Kaiido/canvas-setClip/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+A `CanvasRenderingContext2D.setClip()` and `CanvasRenderingContext2D.resetClip()` polyfill.  
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+These methods are not *yet* part of the specs, but a long-dated request by web-devs [1][1], [2][2]
+which faced implementers' disapproval because they were supposedly impossible to implement.  
 
-### Markdown
+This polyfill proves it's possible to have such methods, albeit through quite dirty
+overrides.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+### Additions to the CanvasDrawPath interface mixin:
 
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+```webidl
+interface mixin CanvasDrawPath {
+  undefined setClip(optional CanvasFillRule fillRule = "nonzero");
+  undefined setClip(Path2D path, optional CanvasFillRule fillRule = "nonzero");
+  undefined resetClip();
+}
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+### Caveats
+Because it overwrites all the drawing methods of the original context by using Path2D objects, this polyfill comes with a few caveats:
 
-### Jekyll Themes
+ - It requires **native support** for Path2D objects.
+ - It may **not** be compatible with some drawing polyfills like `ellipse` or `roundRect`.
+ - Drawing complex pathes when the context is transformed is slower when this polyfill is active.
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/Kaiido/canvas-setClip/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+For this last point, it is certainly best if you design your project to use only Path2D all along.
 
-### Support or Contact
+### Should I use this polyfill?
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+Your call. You can, but it comes with no warranty and is more a proof-of-concept than a real production ready code.
+
+[1]: https://www.w3.org/Bugs/Public/show_bug.cgi?id=14499
+[2]: https://whatwg.whatwg.narkive.com/v89Kf0y0/remove-resetclip-from-the-canvas-2d-spec#post11
